@@ -133,6 +133,24 @@ inline bool open_binary_file( const std::string &pathUtf8, std::vector< uint8_t 
     return true;
 }
 
+inline std::uintptr_t image_to_module(std::uintptr_t module_base,
+                                      std::uintptr_t image_base,
+                                      std::uintptr_t image_address) {
+  if (!image_address)
+    return 0ull;
+
+  return module_base + (image_address - image_base);
+}
+
+inline std::uintptr_t module_to_image(std::uintptr_t module_base,
+                                      std::uintptr_t image_base,
+                                      std::uintptr_t module_address) {
+  if (!module_address)
+    return 0ull;
+
+  return image_base + (module_address - module_base);
+}
+
 /// <summary>
 /// utils pertaining to native registers...
 /// </summary>
