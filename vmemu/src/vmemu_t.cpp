@@ -4,6 +4,7 @@ namespace vm {
 emu_t::emu_t(vm::ctx_t* vm_ctx)
     : g_vm_ctx(vm_ctx),
       uc_ctx(nullptr),
+      module_base_(vm_ctx->module_base),
       img_base(vm_ctx->image_base),
       img_size(vm_ctx->image_size) {}
 
