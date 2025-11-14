@@ -4,6 +4,7 @@ namespace vm {
 emu_t::emu_t(vm::ctx_t* vm_ctx)
     : g_vm_ctx(vm_ctx),
       uc_ctx(nullptr),
+      module_base_(vm_ctx->module_base),
       img_base(vm_ctx->image_base),
       img_size(vm_ctx->image_size) {}
 
@@ -307,27 +308,27 @@ bool emu_t::get_trace(std::vector<vm::instrs::code_block_t>& entries) {
   }
 
   for (auto& [code_block, cpu_ctx, vm_ctx] : code_blocks) {
+    const auto module_base = vm_ctx ? vm_ctx->module_base : module_base_;
+    const auto image_base = vm_ctx ? vm_ctx->image_base : img_base;
+
     // convert linear virtual addresses to image based addresses...
     code_block.vip_begin =
-        (code_block.vip_begin - g_vm_ctx->module_base) + g_vm_ctx->image_base;
+        vm::util::module_to_image(module_base, image_base, code_block.vip_begin);
     if (code_block.jcc.has_jcc) {
       switch (code_block.jcc.type) {
         case vm::instrs::jcc_type::branching: {
-          code_block.jcc.block_addr[1] =
-              (code_block.jcc.block_addr[1] - g_vm_ctx->module_base) +
-              g_vm_ctx->image_base;
+          code_block.jcc.block_addr[1] = vm::util::module_to_image(
+              module_base, image_base, code_block.jcc.block_addr[1]);
         }
         case vm::instrs::jcc_type::absolute: {
-          code_block.jcc.block_addr[0] =
-              (code_block.jcc.block_addr[0] - g_vm_ctx->module_base) +
-              g_vm_ctx->image_base;
+          code_block.jcc.block_addr[0] = vm::util::module_to_image(
+              module_base, image_base, code_block.jcc.block_addr[0]);
           break;
         }
         case vm::instrs::jcc_type::switch_case: {
           for (auto idx = 0u; idx < code_block.jcc.block_addr.size(); ++idx)
-            code_block.jcc.block_addr[idx] =
-                (code_block.jcc.block_addr[idx] - g_vm_ctx->module_base) +
-                g_vm_ctx->image_base;
+            code_block.jcc.block_addr[idx] = vm::util::module_to_image(
+                module_base, image_base, code_block.jcc.block_addr[idx]);
           break;
         }
       }
@@ -494,8 +495,7 @@ bool emu_t::code_exec_callback(uc_engine* uc, uint64_t address, uint32_t size,
     if (!g_force_emu) obj->cc_block = nullptr;
 
     std::printf("> please define virtual machine handler (%p): \n\n",
-                (vm_handler_addr - obj->g_vm_ctx->module_base) +
-                    obj->g_vm_ctx->image_base);
+                vm_handler.image_address);
 
     vm::util::print(vm_handler.instrs);
     std::printf("\n\n");

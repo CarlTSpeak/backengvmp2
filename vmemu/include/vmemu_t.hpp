@@ -35,7 +35,7 @@ class emu_t {
   bool get_trace(std::vector<vm::instrs::code_block_t>& code_blocks);
 
  private:
-  std::uintptr_t img_base, img_size;
+  std::uintptr_t module_base_, img_base, img_size;
   uc_hook code_exec_hook, invalid_mem_hook, int_hook;
 
   uc_engine* uc_ctx;
