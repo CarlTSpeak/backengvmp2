@@ -32,9 +32,16 @@ namespace vm::handler
         zydis_routine_t instrs;
 
         /// <summary>
-        /// linear virtual address to the vm handler...
+        /// linear virtual address to the vm handler within the emulated module
+        /// (module base adjusted).
         /// </summary>
         std::uintptr_t address;
+
+        /// <summary>
+        /// original image based virtual address to the vm handler as stored in
+        /// the binary. This is useful when serialising results back to disk.
+        /// </summary>
+        std::uintptr_t image_address;
     };
 
     /// <summary>

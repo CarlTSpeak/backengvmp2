@@ -54,7 +54,10 @@ namespace vm::handler
             zydis_routine_t vm_handler_instrs;
 
             const auto decrypt_val = vm::handler::table::decrypt( instr, vm_handler_table[ idx ] );
-            if ( !vm::handler::get( vm_handler_instrs, ( decrypt_val - image_base ) + module_base ) )
+            const auto module_addr =
+                vm::util::image_to_module( module_base, image_base, decrypt_val );
+
+            if ( !vm::handler::get( vm_handler_instrs, module_addr ) )
                 return false;
 
             const auto has_imm = vm::handler::has_imm( vm_handler_instrs );
@@ -64,7 +67,8 @@ namespace vm::handler
                  ( !vm::handler::get_operand_transforms( vm_handler_instrs, transforms ) || !imm_size.has_value() ) )
                 return false;
 
-            vm_handler.address = ( decrypt_val - image_base ) + module_base;
+            vm_handler.address = module_addr;
+            vm_handler.image_address = decrypt_val;
             vm_handler.instrs = vm_handler_instrs;
             vm_handler.imm_size = imm_size.has_value() ? imm_size.value() : 0u;
             vm_handler.transforms = transforms;
