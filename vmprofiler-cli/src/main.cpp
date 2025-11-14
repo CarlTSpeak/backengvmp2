@@ -1,33 +1,29 @@
 #include <ZydisExportConfig.h>
 
 #include <algorithm>
-#include <argparse.h>
+#include <cli-parser.hpp>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <nt/image.hpp>
 #include <vmprofiler.hpp>
 
-auto open_binary_file(const std::string &file, std::vector<uint8_t> &data)
-    -> bool {
-  std::ifstream fstr(file, std::ios::binary);
-
-  if (!fstr.is_open()) return false;
-
-  fstr.unsetf(std::ios::skipws);
-  fstr.seekg(0, std::ios::end);
-
-  const auto file_size = fstr.tellg();
-
-  fstr.seekg(NULL, std::ios::beg);
-  data.reserve(static_cast<uint32_t>(file_size));
-  data.insert(data.begin(), std::istream_iterator<uint8_t>(fstr),
-              std::istream_iterator<uint8_t>());
-  return true;
+auto open_binary_file( const std::string &file, std::vector< uint8_t > &data ) -> bool
+{
+    std::ifstream f( file, std::ios::binary );
+    if ( !f )
+        return false;
+    f.seekg( 0, std::ios::end );
+    const auto sz = static_cast< std::size_t >( f.tellg() );
+    f.seekg( 0, std::ios::beg );
+    data.resize( sz );
+    if ( !f.read( reinterpret_cast< char * >( data.data() ), sz ) )
+        return false;
+    return true;
 }
 
 int __cdecl main(int argc, const char *argv[]) {
-  argparse::ArgumentParser parser("vmprofiler-cli",
+  argparse::argument_parser_t parser("vmprofiler-cli",
                                      "virtual machine information inspector");
   parser.add_argument()
       .names({"--bin", "--vmpbin"})
@@ -134,6 +130,7 @@ int __cdecl main(int argc, const char *argv[]) {
                       instr.addr -= module_base;
                       instr.addr += image_base;
                     });
+      vm::util::print( vmctx.calc_jmp );
       std::puts(
           "============================================================\n");
       std::printf("> vip advancement = %s\n\n",
@@ -148,6 +145,13 @@ int __cdecl main(int argc, const char *argv[]) {
                   ? vmctx.vm_handlers[idx].profile->name
                   : "UNK",
               idx);
+
+    std::for_each( vmctx.vm_handlers[ idx ].instrs.begin(), vmctx.vm_handlers[ idx ].instrs.end(),
+                         [ & ]( zydis_instr_t &instr )
+                         {
+                             instr.addr -= module_base;
+                             instr.addr += image_base;
+                         } );
 
           vm::util::print(vmctx.vm_handlers[idx].instrs);
 
@@ -183,6 +187,14 @@ int __cdecl main(int argc, const char *argv[]) {
                 ? vmctx.vm_handlers[vm_handler_idx].profile->name
                 : "UNK",
             vm_handler_idx);
+
+    std::for_each( vmctx.vm_handlers[ vm_handler_idx ].instrs.begin(),
+                       vmctx.vm_handlers[ vm_handler_idx ].instrs.end(),
+                       [ & ]( zydis_instr_t &instr )
+                       {
+                           instr.addr -= module_base;
+                           instr.addr += image_base;
+                       } );
 
         vm::util::print(vmctx.vm_handlers[vm_handler_idx].instrs);
 
@@ -265,6 +277,13 @@ int __cdecl main(int argc, const char *argv[]) {
                     ? vmctx.vm_handlers[idx].profile->name
                     : "UNK",
                 idx);
+
+    std::for_each( vmctx.vm_handlers[ idx ].instrs.begin(), vmctx.vm_handlers[ idx ].instrs.end(),
+                           [ & ]( zydis_instr_t &instr )
+                           {
+                               instr.addr -= module_base;
+                               instr.addr += image_base;
+                           } );
 
             vm::util::print(vmctx.vm_handlers[idx].instrs);
 

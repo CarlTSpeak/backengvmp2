@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <Zydis/Utils.h>
 #include <Zydis/Zydis.h>
 #include <xmmintrin.h>
@@ -9,6 +9,7 @@
 #include <optional>
 #include <thread>
 #include <vector>
+#include <filesystem>
 
 #ifdef _MSC_VER
 
@@ -97,21 +98,39 @@ inline void init() {
   }
 }
 
-inline bool open_binary_file(const std::string &file,
-                             std::vector<uint8_t> &data) {
-  std::ifstream fstr(file, std::ios::binary);
-  if (!fstr.is_open()) return false;
+inline bool open_binary_file( const std::string &pathUtf8, std::vector< uint8_t > &out )
+{
+    out.clear();
 
-  fstr.unsetf(std::ios::skipws);
-  fstr.seekg(0, std::ios::end);
+#if defined( _WIN32 )
+    // Accept Unicode paths on Windows: std::filesystem::path handles UTF-8→UTF-16.
+    std::filesystem::path p = std::filesystem::u8path( pathUtf8 );
+    std::ifstream f( p, std::ios::binary );
+#else
+    std::ifstream f( pathUtf8, std::ios::binary );
+#endif
+    if ( !f )
+        return false;
 
-  const auto file_size = fstr.tellg();
+    f.seekg( 0, std::ios::end );
+    std::streampos end = f.tellg();
+    if ( end < 0 )
+        return false; // tellg failed
 
-  fstr.seekg(NULL, std::ios::beg);
-  data.reserve(static_cast<uint32_t>(file_size));
-  data.insert(data.begin(), std::istream_iterator<uint8_t>(fstr),
-              std::istream_iterator<uint8_t>());
-  return true;
+    const std::size_t size = static_cast< std::size_t >( end );
+    out.resize( size );
+
+    f.seekg( 0, std::ios::beg );
+    if ( size == 0 )
+        return true; // empty file is fine
+
+    // Single unformatted read of raw bytes
+    if ( !f.read( reinterpret_cast< char * >( out.data() ), static_cast< std::streamsize >( size ) ) )
+    {
+        // If short read, consider it failure
+        return false;
+    }
+    return true;
 }
 
 /// <summary>

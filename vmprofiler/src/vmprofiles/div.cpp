@@ -113,4 +113,85 @@ namespace vm::handler::profile
                 return instr.mnemonic == ZYDIS_MNEMONIC_POP && instr.operands[ 0 ].type == ZYDIS_OPERAND_TYPE_MEMORY &&
                        instr.operands[ 0 ].mem.base == ZYDIS_REGISTER_RBP;
             } } } };
-} // namespace vm::handler::profile
+
+            vm::handler::profile_t divw = {
+            // MOV DX, [RBP]
+            // MOV AX, [RBP+0x2]
+            // MOV CX, [RBP+0x4]
+            // SUB RBP, 0x6
+            // DIV CX
+            // MOV [RBP+0x8], DX    ; remainder
+            // MOV [RBP+0xA], AX    ; quotient
+            // PUSHFQ
+            // POP [RBP]
+            "DIVW",
+            DIVW,
+            NULL,
+            { { // MOV DX, [RBP]
+                []( const zydis_decoded_instr_t &i ) -> bool
+                {
+                    return i.mnemonic == ZYDIS_MNEMONIC_MOV && i.operands[ 0 ].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+                           i.operands[ 0 ].reg.value == ZYDIS_REGISTER_DX &&
+                           i.operands[ 1 ].type == ZYDIS_OPERAND_TYPE_MEMORY &&
+                           i.operands[ 1 ].mem.base == ZYDIS_REGISTER_RBP;
+                },
+                // MOV AX, [RBP+0x2]
+                []( const zydis_decoded_instr_t &i ) -> bool
+                {
+                    return i.mnemonic == ZYDIS_MNEMONIC_MOV && i.operands[ 0 ].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+                           i.operands[ 0 ].reg.value == ZYDIS_REGISTER_AX &&
+                           i.operands[ 1 ].type == ZYDIS_OPERAND_TYPE_MEMORY &&
+                           i.operands[ 1 ].mem.base == ZYDIS_REGISTER_RBP && 
+                           i.operands[ 1 ].mem.disp.value == 0x2;
+                },
+                // MOV CX, [RBP+0x4]
+                []( const zydis_decoded_instr_t &i ) -> bool
+                {
+                    return i.mnemonic == ZYDIS_MNEMONIC_MOV && i.operands[ 0 ].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+                           i.operands[ 0 ].reg.value == ZYDIS_REGISTER_CX &&
+                           i.operands[ 1 ].type == ZYDIS_OPERAND_TYPE_MEMORY &&
+                           i.operands[ 1 ].mem.base == ZYDIS_REGISTER_RBP &&
+                           i.operands[ 1 ].mem.disp.value == 0x4;
+                },
+                // SUB RBP, 0x6
+                []( const zydis_decoded_instr_t &i ) -> bool
+                {
+                    return i.mnemonic == ZYDIS_MNEMONIC_SUB && i.operands[ 0 ].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+                           i.operands[ 0 ].reg.value == ZYDIS_REGISTER_RBP &&
+                           i.operands[ 1 ].type == ZYDIS_OPERAND_TYPE_IMMEDIATE &&
+                           i.operands[ 1 ].imm.value.u == 0x6;
+                },
+                // DIV CX
+                []( const zydis_decoded_instr_t &i ) -> bool
+                {
+                    return i.mnemonic == ZYDIS_MNEMONIC_DIV && i.operands[ 0 ].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+                           i.operands[ 0 ].reg.value == ZYDIS_REGISTER_CX;
+                },
+                // MOV [RBP+0x8], DX  (remainder)
+                []( const zydis_decoded_instr_t &i ) -> bool
+                {
+                    return i.mnemonic == ZYDIS_MNEMONIC_MOV && i.operands[ 0 ].type == ZYDIS_OPERAND_TYPE_MEMORY &&
+                           i.operands[ 0 ].mem.base == ZYDIS_REGISTER_RBP && 
+                           i.operands[ 0 ].mem.disp.value == 0x8 &&
+                           i.operands[ 1 ].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+                           i.operands[ 1 ].reg.value == ZYDIS_REGISTER_DX;
+                },
+                // MOV [RBP+0xA], AX  (quotient)
+                []( const zydis_decoded_instr_t &i ) -> bool
+                {
+                    return i.mnemonic == ZYDIS_MNEMONIC_MOV && i.operands[ 0 ].type == ZYDIS_OPERAND_TYPE_MEMORY &&
+                           i.operands[ 0 ].mem.base == ZYDIS_REGISTER_RBP &&
+                           i.operands[ 0 ].mem.disp.value == 0xA &&
+                           i.operands[ 1 ].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+                           i.operands[ 1 ].reg.value == ZYDIS_REGISTER_AX;
+                },
+                // PUSHFQ
+                []( const zydis_decoded_instr_t &i ) -> bool { return i.mnemonic == ZYDIS_MNEMONIC_PUSHFQ; },
+                // POP [RBP]
+                []( const zydis_decoded_instr_t &i ) -> bool
+                {
+                    return i.mnemonic == ZYDIS_MNEMONIC_POP && i.operands[ 0 ].type == ZYDIS_OPERAND_TYPE_MEMORY &&
+                           i.operands[ 0 ].mem.base == ZYDIS_REGISTER_RBP;
+                } } } };
+
+    } // namespace vm::handler::profile

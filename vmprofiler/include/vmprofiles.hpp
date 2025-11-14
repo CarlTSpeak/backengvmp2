@@ -113,7 +113,10 @@ namespace vm::handler
         NANDQ,
         NANDDW,
         NANDW,
-        NANDB
+        NANDB,
+
+        CRC,
+        STACKCHECK
     };
 
     /// <summary>
@@ -232,6 +235,7 @@ namespace vm::handler
 
         extern vm::handler::profile_t mulq;
         extern vm::handler::profile_t muldw;
+        extern vm::handler::profile_t mulw;
 
         extern vm::handler::profile_t imulq;
         extern vm::handler::profile_t imuldw;
@@ -242,14 +246,20 @@ namespace vm::handler
 
         extern vm::handler::profile_t divq;
         extern vm::handler::profile_t divdw;
+        extern vm::handler::profile_t divw;
 
         extern vm::handler::profile_t popvspq;
         extern vm::handler::profile_t popvspw;
 
         extern vm::handler::profile_t idivdw;
+        extern vm::handler::profile_t idivq;
         extern vm::handler::profile_t jmp;
         extern vm::handler::profile_t rdtsc;
         extern vm::handler::profile_t vmexit;
+
+        extern vm::handler::profile_t crc;
+        extern vm::handler::profile_t stackcheck;
+
 
         /// <summary>
         /// a vector of pointers to all defined vm handler profiles...
@@ -262,6 +272,8 @@ namespace vm::handler
             &nandb,       &shlddw,     &shldq,       &shrq,       &shrdw,       &shrw,     &shrb,    &shrdq,
             &shrddw,      &readgsq,    &readq,       &readdw,     &readw,       &readb,    &mulq,    &muldw,
             &imulq,       &imuldw,     &pushvspq,    &pushvspdw,  &pushvspw,    &readcr8,  &readcr3, &writecr3,
-            &divq,        &divdw,      &idivdw,      &jmp,        &lflagsq,     &vmexit,   &call,    &rdtsc };
+            &divq,        &divdw,      &divw,        &idivdw,     &jmp,         &lflagsq,  &vmexit,  &call,    
+            &rdtsc,       &mulw,       &crc, &stackcheck, &idivq };
+
     } // namespace profile
 } // namespace vm::handler

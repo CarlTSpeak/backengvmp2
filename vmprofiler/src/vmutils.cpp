@@ -11,11 +11,11 @@ bool compare(zydis_register_t a, zydis_register_t b) {
 }
 }  // namespace reg
 
-bool get_fetch_operand(const zydis_routine_t& routine,
-                       zydis_instr_t& fetch_instr) {
+bool get_fetch_operand(const zydis_routine_t &routine,
+                       zydis_instr_t &fetch_instr) {
   const auto result = std::find_if(
       routine.begin(), routine.end(),
-      [](const zydis_instr_t& instr_data) -> bool {
+      [](const zydis_instr_t &instr_data) -> bool {
         // mov/movsx/movzx rax/eax/ax/al, [rsi]
         return instr_data.instr.operand_count > 1 &&
                (instr_data.instr.mnemonic == ZYDIS_MNEMONIC_MOV ||
@@ -29,18 +29,17 @@ bool get_fetch_operand(const zydis_routine_t& routine,
                instr_data.instr.operands[1].mem.base == ZYDIS_REGISTER_RSI;
       });
 
-  if (result == routine.end())
-    return false;
+  if (result == routine.end()) return false;
 
   fetch_instr = *result;
   return true;
 }
 
 std::optional<zydis_routine_t::iterator> get_fetch_operand(
-    zydis_routine_t& routine) {
+    zydis_routine_t &routine) {
   auto result = std::find_if(
       routine.begin(), routine.end(),
-      [](const zydis_instr_t& instr_data) -> bool {
+      [](const zydis_instr_t &instr_data) -> bool {
         // mov/movsx/movzx rax/eax/ax/al, [rsi]
         return instr_data.instr.operand_count > 1 &&
                (instr_data.instr.mnemonic == ZYDIS_MNEMONIC_MOV ||
@@ -54,20 +53,19 @@ std::optional<zydis_routine_t::iterator> get_fetch_operand(
                instr_data.instr.operands[1].mem.base == ZYDIS_REGISTER_RSI;
       });
 
-  if (result == routine.end())
-    return {};
+  if (result == routine.end()) return {};
 
   return result;
 }
 
-void print(const zydis_decoded_instr_t& instr) {
+void print(const zydis_decoded_instr_t &instr) {
   char buffer[256];
   ZydisFormatterFormatInstruction(vm::util::g_formatter.get(), &instr, buffer,
                                   sizeof(buffer), 0u);
   std::puts(buffer);
 }
 
-void print(zydis_routine_t& routine) {
+void print(zydis_routine_t &routine) {
   char buffer[256];
   for (auto [instr, raw, addr] : routine) {
     ZydisFormatterFormatInstruction(vm::util::g_formatter.get(), &instr, buffer,
@@ -76,48 +74,43 @@ void print(zydis_routine_t& routine) {
   }
 }
 
-bool is_jmp(const zydis_decoded_instr_t& instr) {
+bool is_jmp(const zydis_decoded_instr_t &instr) {
   return instr.mnemonic >= ZYDIS_MNEMONIC_JB &&
          instr.mnemonic <= ZYDIS_MNEMONIC_JZ;
 }
 
-bool flatten(zydis_routine_t& routine,
-             std::uintptr_t routine_addr,
-             bool keep_jmps,
-             std::uint32_t max_instrs,
+bool flatten(zydis_routine_t &routine, std::uintptr_t routine_addr,
+             bool keep_jmps, std::uint32_t max_instrs,
              std::uintptr_t module_base) {
   zydis_decoded_instr_t instr;
   std::uint32_t instr_cnt = 0u;
 
   while (ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(
-      vm::util::g_decoder.get(), reinterpret_cast<void*>(routine_addr), 0x1000,
+      vm::util::g_decoder.get(), reinterpret_cast<void *>(routine_addr), 0x1000,
       &instr))) {
-    if (++instr_cnt > max_instrs)
-      return false;
+    if (++instr_cnt > max_instrs) return false;
     // detect if we have already been at this instruction... if so that means
     // there is a loop and we are going to just return...
     if (std::find_if(routine.begin(), routine.end(),
-                     [&](const zydis_instr_t& zydis_instr) -> bool {
+                     [&](const zydis_instr_t &zydis_instr) -> bool {
                        return zydis_instr.addr == routine_addr;
                      }) != routine.end())
       return true;
 
     std::vector<u8> raw_instr;
-    raw_instr.insert(raw_instr.begin(), (u8*)routine_addr,
-                     (u8*)routine_addr + instr.length);
+    raw_instr.insert(raw_instr.begin(), (u8 *)routine_addr,
+                     (u8 *)routine_addr + instr.length);
 
-    if (is_jmp(instr) ||
-        instr.mnemonic == ZYDIS_MNEMONIC_CALL &&
-            instr.operands[0].type != ZYDIS_OPERAND_TYPE_REGISTER) {
+    if (is_jmp(instr)) {
       if (instr.operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         routine.push_back({instr, raw_instr, routine_addr});
         return true;
       }
 
-      if (keep_jmps)
-        routine.push_back({instr, raw_instr, routine_addr});
+      if (keep_jmps) routine.push_back({instr, raw_instr, routine_addr});
       ZydisCalcAbsoluteAddress(&instr, &instr.operands[0], routine_addr,
                                &routine_addr);
+
     } else if (instr.mnemonic == ZYDIS_MNEMONIC_RET) {
       routine.push_back({instr, raw_instr, routine_addr});
       return true;
@@ -133,8 +126,8 @@ bool flatten(zydis_routine_t& routine,
   return false;
 }
 
-void deobfuscate(zydis_routine_t& routine) {
-  static const auto _uses_reg = [](zydis_decoded_operand_t& op,
+void deobfuscate(zydis_routine_t &routine) {
+  static const auto _uses_reg = [](zydis_decoded_operand_t &op,
                                    zydis_register_t reg) -> bool {
     switch (op.type) {
       case ZYDIS_OPERAND_TYPE_MEMORY: {
@@ -150,7 +143,7 @@ void deobfuscate(zydis_routine_t& routine) {
     return false;
   };
 
-  static const auto _reads = [](zydis_decoded_instr_t& instr,
+  static const auto _reads = [](zydis_decoded_instr_t &instr,
                                 zydis_register_t reg) -> bool {
     if (instr.operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY &&
         reg::compare(instr.operands[0].mem.base, reg))
@@ -163,7 +156,7 @@ void deobfuscate(zydis_routine_t& routine) {
     return false;
   };
 
-  static const auto _writes = [](zydis_decoded_instr_t& instr,
+  static const auto _writes = [](zydis_decoded_instr_t &instr,
                                  zydis_register_t reg) -> bool {
     for (auto op_idx = 0u; op_idx < instr.operand_count; ++op_idx)
       // if instruction writes to the specific register...
@@ -209,12 +202,12 @@ void deobfuscate(zydis_routine_t& routine) {
       if (reg != ZYDIS_REGISTER_NONE) {
         // find the next place that this register is written too...
         auto write_result = std::find_if(itr + 1, routine.end(),
-                                         [&](zydis_instr_t& instr) -> bool {
+                                         [&](zydis_instr_t &instr) -> bool {
                                            return _writes(instr.instr, reg);
                                          });
 
         auto read_result = std::find_if(itr + 1, write_result,
-                                        [&](zydis_instr_t& instr) -> bool {
+                                        [&](zydis_instr_t &instr) -> bool {
                                           return _reads(instr.instr, reg);
                                         });
 

@@ -1,3 +1,5 @@
+#include <Zydis/Zydis.h>
+
 #include <vmprofiler.hpp>
 
 namespace vm {
