@@ -308,8 +308,9 @@ bool emu_t::get_trace(std::vector<vm::instrs::code_block_t>& entries) {
   }
 
   for (auto& [code_block, cpu_ctx, vm_ctx] : code_blocks) {
-    const auto module_base = vm_ctx ? vm_ctx->module_base : module_base_;
-    const auto image_base = vm_ctx ? vm_ctx->image_base : img_base;
+    const auto* ctx = vm_ctx ? vm_ctx.get() : g_vm_ctx;
+    const auto module_base = ctx->module_base;
+    const auto image_base = ctx->image_base;
 
     // convert linear virtual addresses to image based addresses...
     code_block.vip_begin =
